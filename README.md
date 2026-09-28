@@ -33,7 +33,7 @@ cultist-llm/
 │   ├── download_models.py  从 ModelScope 下载 Qwen3 各尺寸
 │   ├── train.ps1           一键：训练单个尺寸（可选合并 LoRA）
 │   ├── train_all.ps1       一键：按顺序训练多个尺寸（16GB 显存只能串行）
-│   └── upload_hf.py        上传到 Hugging Face（每尺寸一个仓库，含自动生成的模型卡）
+│   └── upload_hf.py        上传到 Hugging Face（每尺寸一个仓库）
 ├── infer/generate.py       批量示例生成 / 交互式对话
 ├── models/                 [生成物] 基座权重（已 gitignore）
 └── outputs/                [生成物] LoRA 权重（已 gitignore）
@@ -247,12 +247,10 @@ conda run -n llama-factory python infer/generate.py --model ... --prompts my_pro
 <repo>/
     <合并后的完整模型>      # 根目录：from_pretrained 直接可加载
     lora/                   # LoRA 适配器（只传适配器与分词器，不含 checkpoint）
-    README.md               # 模型卡，脚本自动生成
+    README.md               # 仓库首页说明，脚本渲染生成
 ```
 
 根目录放合并模型、适配器放 `lora/` 子目录，是为了让两种用法都不歧义：`from_pretrained(repo)` 拿完整模型，`PeftModel.from_pretrained(base, repo, subfolder="lora")` 拿适配器。
-
-模型卡由脚本里的 `CARD` 模板生成，带完整 HF 元数据（`library_name`、`base_model`、`base_model_relation: finetune`、`license`、`language`、`pipeline_tag`、`tags`），正文含模型详情、仓库内容、快速使用（transformers / peft / Ollama）、训练细节、效果示例、已知局限和复现步骤，并自动回链到 GitHub 仓库与同系列其他尺寸。GitHub 地址写在脚本顶部的 `GITHUB_REPO` 常量里，换仓库只改这一处。
 
 ```powershell
 # 先干跑：只列清单、统计体积，不发任何网络请求
@@ -266,7 +264,7 @@ conda run -n llama-factory python scripts\upload_hf.py --sizes 4b --token hf_xxx
 conda run -n llama-factory python scripts\upload_hf.py --sizes 0.6b,4b --token hf_xxx --private
 conda run -n llama-factory python scripts\upload_hf.py --sizes 4b --token hf_xxx --repo-id me/my-model
 
-# 只更新模型卡：改了卡片文案不必重传几 GB 权重
+# 只更新仓库首页 README：改文案不必重传几 GB 权重
 conda run -n llama-factory python scripts\upload_hf.py --sizes 0.6b,4b --token hf_xxx --card-only
 ```
 
