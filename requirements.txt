@@ -1,0 +1,17 @@
+# 《密教模拟器》文本模型 —— 额外依赖
+#
+# 训练框架本身请使用已有的 llama-factory conda 环境（已含 torch 2.9 / transformers 4.57 /
+# datasets / peft / modelscope）。下面两项是当前环境缺失、按需补装的：
+#
+#   安装方式：
+#     conda run -n llama-factory pip install -U bitsandbytes
+#
+#   —— bitsandbytes ——
+#   仅 Qwen3-8B / 14B 的 QLoRA(4bit) 配置需要。Windows 需 >= 0.43。
+#   不装也能跑 0.6B / 1.7B / 4B 的 LoRA。
+triton-windows>=3.2.0; sys_platform == "win32"   # bitsandbytes 在 Windows 上的依赖
+bitsandbytes>=0.45.0
+
+#   —— huggingface_hub ——
+#   仅当 download_models.py 使用 --source hf 时需要；默认走 ModelScope 不需要。
+huggingface_hub>=0.24.0

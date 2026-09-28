@@ -1,0 +1,57 @@
+# Qwen3-8B QLoRA (4bit) 微调
+# bf16 全量权重约 16G，16G 显卡放不下，必须 4bit 量化：
+#   4bit 权重约 5G + 激活 ≈ 11~14 GB
+# 前置依赖：pip install -U bitsandbytes  (Windows 需 >= 0.43)
+# 启动：llamafactory-cli train configs/qwen3_8b_qlora.yaml
+
+### 模型
+model_name_or_path: models\Qwen3-8B
+trust_remote_code: true
+
+### 微调方法
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+
+### 量化
+quantization_bit: 4
+quantization_method: bnb
+double_quantization: true
+
+### 数据集
+dataset: cultist_cs
+eval_dataset: cultist_cs_eval
+dataset_dir: data\dataset
+template: qwen3_nothink
+cutoff_len: 896
+preprocessing_num_workers: 4
+overwrite_cache: true
+
+### 输出
+output_dir: outputs\qwen3-8b-qlora
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### 训练超参
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 1.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+gradient_checkpointing: true
+flash_attn: sdpa
+ddp_timeout: 180000000
+
+### 验证
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 200

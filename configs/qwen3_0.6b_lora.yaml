@@ -1,0 +1,65 @@
+# Qwen3-0.6B LoRA 微调 —— 最快验证流程用
+# 显存大头是 LM head 对 15.1 万词表算 logits，正比于 batch × cutoff_len，而不是参数量。
+# 注意 `nvidia-smi` 的显存数字没有区分度：batch 4（健康，1.0 s/步）和 batch 8
+# （溢出换页，9 s/步）它都报 15.6~15.9 / 16 GB。
+# 健康判据 = **步速 + 整卡功耗**：健康 1.0~1.2 s/步、100~120 W；
+# 换页/算力被抢则是 9~11 s/步、40~80 W（此时 GPU 占用率仍会显示 100%）。
+# `Shared Usage` **不能单独当判据**（实测同一个健康进程它稳定在 10.96 GB 且不涨，
+# 刚重启时才 1.0 GB，它只随进程存活时间爬升）：只有 Shared 顶上限 **且** 步速掉到
+# 10 s/步量级 **且** 功耗 40~80 W 三条件同时成立，才是真的在换页。详见 README。
+# 启动：llamafactory-cli train configs/qwen3_0.6b_lora.yaml
+
+### 模型
+model_name_or_path: models\Qwen3-0.6B
+trust_remote_code: true
+
+### 微调方法
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+
+### 数据集
+dataset: cultist_cs
+eval_dataset: cultist_cs_eval
+dataset_dir: data\dataset
+template: qwen3_nothink
+cutoff_len: 896
+preprocessing_num_workers: 4
+overwrite_cache: true
+
+### 输出
+output_dir: outputs\qwen3-0.6b-lora
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### 训练超参
+# 等效 batch 恒为 16，所以总步数（6720 = 1680 步/epoch × 4）与学习率调度不受 batch 拆分方式影响
+# 坑：改过这两个值之后再带 checkpoint 续训（overwrite_output_dir=false），**batch 不会生效**——
+# HF Trainer 会用 checkpoint 里 trainer_state.json 的 train_batch_size 覆盖 dataloader 的 batch。
+# 必须同步把该字段改成与这里一致，否则实际 batch 会翻倍、显存回到溢出区。详见 README。
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 1.0e-4
+num_train_epochs: 4.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+gradient_checkpointing: true
+flash_attn: sdpa
+ddp_timeout: 180000000
+# 注意：Windows 上**不要**设 dataloader_num_workers > 0。配合 gradient_checkpointing 时，
+# HF 的 enable_input_require_grads() 注册的是本地闭包，spawn worker 需要 pickle 它，
+# 会直接崩：AttributeError: Can't pickle local object
+# 'PreTrainedModel.enable_input_require_grads.<locals>.make_inputs_require_grads'
+
+### 验证
+per_device_eval_batch_size: 4
+eval_strategy: steps
+eval_steps: 200

@@ -1,0 +1,62 @@
+# Qwen3-4B LoRA 微调 —— 16G 显存下的推荐主力尺寸
+# 显存占用实测 14.3 GB（14,626 / 16,380 MiB，bf16 权重 8G + LM head logits + 激活），余量仅约 1.7 GB
+# 因此这里必须用 1×16：per-device batch 再加到 2 会直接 OOM，不要改。
+# （等效 batch 仍为 16，总步数与学习率调度不变。）
+# 实测训练期 GPU 占用中位数 94%、整卡功耗 111 W、步速 3.08 s/步，5,040 步 / 6:00:21 跑完，
+# 末段 eval_loss 稳定在 1.949（无过拟合）。
+# 启动：llamafactory-cli train configs/qwen3_4b_lora.yaml
+
+### 模型
+model_name_or_path: models\Qwen3-4B
+trust_remote_code: true
+
+### 微调方法
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+# 关键：默认情况下 LLaMA-Factory 会把 LoRA 可训练参数升到 float32
+# （日志里的 "Upcasting trainable params to float32."），LoRA 分支一旦是 fp32，
+# 加法就会把整条激活链和 LM head logits 一起提升成 fp32，显存翻倍。
+# 置为 pure_bf16 后 LoRA 保持半精度，日志会变成
+# "Pure bf16 / BAdam detected, remaining trainable params in half precision."
+# 前置条件是设备支持 bf16 且不用 DeepSpeed ZeRO-3，满足即可开。
+pure_bf16: true
+
+### 数据集
+dataset: cultist_cs
+eval_dataset: cultist_cs_eval
+dataset_dir: data\dataset
+template: qwen3_nothink
+cutoff_len: 896
+preprocessing_num_workers: 4
+overwrite_cache: true
+
+### 输出
+output_dir: outputs\qwen3-4b-lora
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### 训练超参
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 1.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+gradient_checkpointing: true
+flash_attn: sdpa
+ddp_timeout: 180000000
+# 同 0.6B：Windows 下不要开 dataloader_num_workers（与 gradient_checkpointing 冲突，spawn 无法 pickle）
+
+### 验证
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 200

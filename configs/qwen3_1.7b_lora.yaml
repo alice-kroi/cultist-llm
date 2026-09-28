@@ -1,0 +1,50 @@
+# Qwen3-1.7B LoRA 微调
+# 显存占用约 6~7 GB
+# 启动：llamafactory-cli train configs/qwen3_1.7b_lora.yaml
+
+### 模型
+model_name_or_path: models\Qwen3-1.7B
+trust_remote_code: true
+
+### 微调方法
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+
+### 数据集
+dataset: cultist_cs
+eval_dataset: cultist_cs_eval
+dataset_dir: data\dataset
+template: qwen3_nothink
+cutoff_len: 896
+preprocessing_num_workers: 4
+overwrite_cache: true
+
+### 输出
+output_dir: outputs\qwen3-1.7b-lora
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### 训练超参
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 1.0e-4
+num_train_epochs: 4.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+gradient_checkpointing: true
+flash_attn: sdpa
+ddp_timeout: 180000000
+
+### 验证
+per_device_eval_batch_size: 4
+eval_strategy: steps
+eval_steps: 200

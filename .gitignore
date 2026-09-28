@@ -1,0 +1,42 @@
+# 模型权重：几十 GB，可以从 ModelScope 重新下载
+# 克隆后跑 python scripts/download_models.py --sizes 0.6b 4b
+models/
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+
+# 训练产物：LoRA 适配器与合并模型，体积大，已发布到 Hugging Face
+outputs/
+wandb/
+runs/
+
+# 从游戏抽取的语料与派生数据集
+# 游戏文本版权归 Weather Factory，不入库；跑 scripts/prepare_data.ps1 重新生成
+data/corpus/
+data/dataset/
+
+# 日志：训练日志全部忽略，但保留两份推理验证日志，README 用它们当实测证据
+# 注意 *.log 必须排在 ! 之前，否则白名单会被重新盖掉；logs/* 也不能省成 logs/
+*.log
+trainer_log.jsonl
+logs/*
+!logs/verify_*.log
+
+# 缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.cache/
+hf_cache/
+.hf_cache/
+.locks/
+
+# 编辑器与系统
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+desktop.ini
