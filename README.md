@@ -19,6 +19,8 @@ cultist-llm/
 │   ├── corpus/             [生成物] text_units.jsonl / aspect_labels.json / stats.json
 │   └── dataset/            [生成物] train.json / eval.json / dataset_info.json
 ├── configs/                5 个尺寸的 LLaMA-Factory 训练配置
+├── templates/
+│   └── model_card.md       Hugging Face 模型卡模板（上传时渲染成仓库首页）
 ├── scripts/
 │   ├── prepare_data.ps1    一键：抽取 + 构建数据集
 │   ├── download_models.py  从 ModelScope 下载 Qwen3 各尺寸
