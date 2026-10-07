@@ -22,6 +22,7 @@ data/dataset/
 trainer_log.jsonl
 logs/*
 !logs/verify_*.log
+!logs/metrics_*.png
 
 # 缓存
 __pycache__/

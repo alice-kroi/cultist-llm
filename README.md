@@ -166,6 +166,11 @@ conda run -n llama-factory python infer/generate.py --model ... --prompts my_pro
 
 统一设置是 `lora_rank=16` / `alpha=32` / `lora_target=all`，等效 batch 16，`learning_rate=1e-4`，cosine 调度，`bf16` 加梯度检查点，每 epoch 约 3689 步（59,018 条训练样本 ÷ 等效 batch 16）。模板用 `qwen3_nothink`——本任务是风格化文本生成，不需要 Qwen3 的思考链。
 
+训练过程每 10 步打印一次 loss / learning_rate / grad_norm，实时输出到终端，`train_all.ps1` 会另存一份到 `logs\train_<size>.log`。训练结束后自动从 `trainer_state.json` / `trainer_log.jsonl` 生成多面板指标图（训练 loss、验证 loss、学习率、梯度范数、每步耗时），存到 `logs\metrics_<尺寸>.png`，方便分析收敛情况与后续开发：
+
+- [logs/metrics_qwen3-0.6b-lora.png](logs/metrics_qwen3-0.6b-lora.png)
+- [logs/metrics_qwen3-4b-lora.png](logs/metrics_qwen3-4b-lora.png)
+
 `cutoff_len: 896` 是按真实数据定的：59,018 条训练样本的 token 长度最长 768、p99 314、均值 136，896 已覆盖 100%。4B 另开了 `pure_bf16: true`，让 LoRA 分支保持半精度（LLaMA-Factory 默认会降到 float32，显存翻倍）。
 
 `-Merge` 默认在 CPU 上做，不吃显存；实测 0.6B 合并约 30 秒，产物是单个 bf16 的 `model.safetensors`，可以脱离 LoRA 适配器直接加载。

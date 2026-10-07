@@ -107,11 +107,22 @@ Push-Location $Root
 try { & conda @ArgList } finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw "训练失败（退出码 $LASTEXITCODE）" }
 
-# ---------- 可选：合并 LoRA 权重 ----------
+# ---------- 训练指标图表 ----------
+# 从 trainer_state.json / trainer_log.jsonl / all_results.json 生成多面板指标图，
+# 便于训练后的效果分析与后续开发（train/eval loss、学习率、梯度范数、每步耗时）
 $FinalOut = if ($Overrides -match "^output_dir=") {
     ($Overrides | Where-Object { $_ -like "output_dir=*" }) -replace "^output_dir=", ""
 } else { $OutPath }
 
+if ($FinalOut -and (Test-Path (Join-Path $FinalOut "trainer_state.json"))) {
+    Write-Host "`n生成训练指标图表 ..." -ForegroundColor Cyan
+    & conda run --no-capture-output -n $EnvName python (Join-Path $Root "scripts\plot_training.py") --output-dir $FinalOut
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[警告] 指标图表生成失败（不影响训练结果）" -ForegroundColor Yellow
+    }
+}
+
+# ---------- 可选：合并 LoRA 权重 ----------
 if ($Merge) {
     $MergedDir = "$FinalOut-merged"
     Write-Host "`n合并 LoRA 到完整模型：$MergedDir" -ForegroundColor Cyan
