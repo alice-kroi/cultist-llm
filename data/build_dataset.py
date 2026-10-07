@@ -32,11 +32,20 @@ import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-SYSTEM_PROMPT = (
-    "你是《密教模拟器》（Cultist Simulator）的文本生成模型。"
-    "你精通该游戏晦涩、克制、带着书卷气与不祥暗示的文风，"
-    "能够按给定的题材、类别和主题创作中文与英文游戏文本，也能在中英文之间准确互译。"
-)
+# 每款游戏的展示名，用于提示词与系统提示
+GAME_ZH = {"cs": "密教模拟器", "bh": "司辰之书"}
+GAME_EN = {"cs": "Cultist Simulator", "bh": "Book of Hours"}
+
+
+def system_prompt(game: str) -> str:
+    """按游戏生成系统提示。两款游戏都强调 Weather Factory 的晦涩文风。"""
+    zh = GAME_ZH[game]
+    en = GAME_EN[game]
+    return (
+        f"你是《{zh}》（{en}）的文本生成模型。"
+        "你精通该游戏晦涩、克制、带着书卷气与不祥暗示的文风，"
+        "能够按给定的题材、类别和主题创作中文与英文游戏文本，也能在中英文之间准确互译。"
+    )
 
 # 九大准则及扩展准则：作为「主题」出现在提示词中
 PRINCIPLES = [
@@ -62,101 +71,101 @@ RT_TAG_RE = re.compile(r"</?(?:br|b|i|em|strong|u|s)\s*/?>", re.IGNORECASE)
 FIELD_PROMPTS: dict[tuple[str, str], dict[str, tuple[str, str]]] = {
     ("elements", "description"): {
         "zh": (
-            "为《密教模拟器》中的一张卡牌撰写描述文本。",
+            "为《{game_zh}》中的一张卡牌撰写描述文本。",
             "语言：中文\n卡牌名称：{zh_label}{kind_zh}{theme_zh}",
         ),
         "en": (
-            "Write the description text for a card in Cultist Simulator.",
+            "Write the description text for a card in {game_en}.",
             "Language: English\nCard name: {en_label}{kind_en}{theme_en}",
         ),
     },
     ("recipes", "startdescription"): {
         "zh": (
-            "为《密教模拟器》撰写一次行动的开场叙述文本。",
+            "为《{game_zh}》撰写一次行动的开场叙述文本。",
             "语言：中文\n行动类型：{action_zh}\n事件名称：{zh_label}",
         ),
         "en": (
-            "Write the opening narrative text for an action in Cultist Simulator.",
+            "Write the opening narrative text for an action in {game_en}.",
             "Language: English\nAction: {action_en}\nEvent name: {en_label}",
         ),
     },
     ("recipes", "description"): {
         "zh": (
-            "为《密教模拟器》撰写一次行动结算后的叙述文本。",
+            "为《{game_zh}》撰写一次行动结算后的叙述文本。",
             "语言：中文\n行动类型：{action_zh}\n事件名称：{zh_label}",
         ),
         "en": (
-            "Write the narrative text shown after an action resolves in Cultist Simulator.",
+            "Write the narrative text shown after an action resolves in {game_en}.",
             "Language: English\nAction: {action_en}\nEvent name: {en_label}",
         ),
     },
     ("endings", "description"): {
         "zh": (
-            "撰写《密教模拟器》的一个结局正文。",
+            "撰写《{game_zh}》的一个结局正文。",
             "语言：中文\n结局名称：{zh_label}",
         ),
         "en": (
-            "Write the main text of an ending in Cultist Simulator.",
+            "Write the main text of an ending in {game_en}.",
             "Language: English\nEnding name: {en_label}",
         ),
     },
     ("endings", "flavour"): {
         "zh": (
-            "撰写《密教模拟器》结局的收尾余韵短句（简洁、克制、有余味）。",
+            "撰写《{game_zh}》结局的收尾余韵短句（简洁、克制、有余味）。",
             "语言：中文\n结局名称：{zh_label}",
         ),
         "en": (
-            "Write the closing flavour line of an ending in Cultist Simulator (terse, restrained, resonant).",
+            "Write the closing flavour line of an ending in {game_en} (terse, restrained, resonant).",
             "Language: English\nEnding name: {en_label}",
         ),
     },
     ("achievements", "descriptionunlocked"): {
         "zh": (
-            "撰写《密教模拟器》中成就解锁时的说明文本。",
+            "撰写《{game_zh}》中成就解锁时的说明文本。",
             "语言：中文\n成就名称：{zh_label}",
         ),
         "en": (
-            "Write the description shown when an achievement unlocks in Cultist Simulator.",
+            "Write the description shown when an achievement unlocks in {game_en}.",
             "Language: English\nAchievement name: {en_label}",
         ),
     },
     ("legacies", "description"): {
         "zh": (
-            "撰写《密教模拟器》中一个「传承」的开场叙述（描述新角色接手的局面）。",
+            "撰写《{game_zh}》中一个「传承」的开场叙述（描述新角色接手的局面）。",
             "语言：中文\n传承名称：{zh_label}",
         ),
         "en": (
-            "Write the opening narrative for a legacy in Cultist Simulator.",
+            "Write the opening narrative for a legacy in {game_en}.",
             "Language: English\nLegacy name: {en_label}",
         ),
     },
     ("legacies", "startdescription"): {
         "zh": (
-            "撰写《密教模拟器》中一个「传承」启程时的提示文本。",
+            "撰写《{game_zh}》中一个「传承」启程时的提示文本。",
             "语言：中文\n传承名称：{zh_label}",
         ),
         "en": (
-            "Write the starting prompt text for a legacy in Cultist Simulator.",
+            "Write the starting prompt text for a legacy in {game_en}.",
             "Language: English\nLegacy name: {en_label}",
         ),
     },
     ("decks", "description"): {
         "zh": (
-            "撰写《密教模拟器》中一个事件牌堆的说明文本。",
+            "撰写《{game_zh}》中一个事件牌堆的说明文本。",
             "语言：中文\n牌堆名称：{zh_label}",
         ),
         "en": (
-            "Write the description text for an event deck in Cultist Simulator.",
+            "Write the description text for an event deck in {game_en}.",
             "Language: English\nDeck name: {en_label}",
         ),
     },
     ("verbs", "description"): {
         "zh": (
-            "撰写《密教模拟器》中一个行动（verb）的说明文本。",
+            "撰写《{game_zh}》中一个行动（verb）的说明文本。",
             "语言：中文\n行动名称：{zh_label}",
         ),
         "en": (
-            "Write the description text for a verb in Cultist Simulator.",
+            "Write the description text for a verb in {game_en}.",
             "Language: English\nVerb name: {en_label}",
         ),
     },
@@ -222,66 +231,78 @@ def describe_theme(unit: dict, labels: dict) -> tuple[str, str]:
     return f"\n主题：{zh}", f"\nTheme: {en}"
 
 
-def make(instruction: str, input_: str, output: str, task: str, lang: str) -> dict:
+def make(instruction: str, input_: str, output: str, task: str, lang: str, game: str) -> dict:
     return {
         "instruction": instruction,
         "input": input_.strip(),
         "output": output.strip(),
-        "system": SYSTEM_PROMPT,
+        "system": system_prompt(game),
         "_task": task,
         "_lang": lang,
     }
 
 
-def render(template: str, unit: dict, labels: dict) -> str:
+def render_values(unit: dict, labels: dict) -> dict:
+    """计算模板需要的全部上下文占位值。"""
+    game = unit["game"]
     kind_zh, kind_en = describe_kind(unit, labels)
     theme_zh, theme_en = describe_theme(unit, labels)
-    action_zh = ACTION_ZH.get(unit["ctx"].get("actionid") or "", "")
-    action_en = unit["ctx"].get("actionid_en") or unit["ctx"].get("actionid") or ""
-    values = {
+    # CS 的 actionid 是 study/dream/talk…（有中文映射）；BH 是 salon.*/library.* 等，
+    # 没有现成映射时回退用原始 id，至少提示词里有个可读的占位而不是「未知」
+    actionid = unit["ctx"].get("actionid") or ""
+    action_zh = ACTION_ZH.get(actionid) or actionid or "未知"
+    action_en = unit["ctx"].get("actionid_en") or actionid or "unknown"
+    return {
+        "game_zh": GAME_ZH[game],
+        "game_en": GAME_EN[game],
         "zh_label": unit["zh_label"] or unit["id"],
         "en_label": unit["en_label"] or unit["zh_label"] or unit["id"],
         "kind_zh": kind_zh,
         "kind_en": kind_en,
         "theme_zh": theme_zh,
         "theme_en": theme_en,
-        "action_zh": action_zh or "未知",
-        "action_en": action_en or "unknown",
+        "action_zh": action_zh,
+        "action_en": action_en,
     }
-    return template.format(**values)
+
+
+def render(template: str, unit: dict, labels: dict) -> str:
+    return template.format(**render_values(unit, labels))
 
 
 def build_for_unit(unit: dict, labels: dict) -> list[dict]:
     """把一个文本单元派生成多个训练样本。"""
     out: list[dict] = []
+    game = unit["game"]
     zh, en = clean(unit["zh"]), clean(unit["en"])
     key = (unit["etype"], unit["field"])
     zh_ok = cjk_len(zh) >= MIN_ZH_CJK
     en_ok = len(en) >= MIN_EN_CHARS and en.lower() != zh.lower() and en != zh
+    values = render_values(unit, labels)
 
     # ---- 1. 字段驱动的双向生成 ----
     prompts = FIELD_PROMPTS.get(key)
     if prompts:
         instr, tpl = prompts["zh"]
         if prompts["zh"] and zh_ok:
-            out.append(make(instr, render(tpl, unit, labels), zh, f"gen.{key[0]}.{key[1]}.zh", "zh"))
+            out.append(make(instr.format(**values), render(tpl, unit, labels), zh, f"gen.{key[0]}.{key[1]}.zh", "zh", game))
         instr_en, tpl_en = prompts["en"]
         if en_ok:
-            out.append(make(instr_en, render(tpl_en, unit, labels), en, f"gen.{key[0]}.{key[1]}.en", "en"))
+            out.append(make(instr_en.format(**values), render(tpl_en, unit, labels), en, f"gen.{key[0]}.{key[1]}.en", "en", game))
 
     # ---- 2. 主题创作：以准则为主题写卡牌描述 ----
     if key == ("elements", "description"):
         theme_zh, theme_en = describe_theme(unit, labels)
         if theme_zh and zh_ok:
             out.append(make(
-                "以《密教模拟器》的文风，围绕给定主题写一段卡牌描述文本。",
+                f"以《{GAME_ZH[game]}》的文风，围绕给定主题写一段卡牌描述文本。",
                 f"语言：中文{theme_zh}",
-                zh, "theme.elements.zh", "zh"))
+                zh, "theme.elements.zh", "zh", game))
         if theme_en and en_ok:
             out.append(make(
-                "In the style of Cultist Simulator, write a card description on the given theme.",
+                f"In the style of {GAME_EN[game]}, write a card description on the given theme.",
                 f"Language: English{theme_en}",
-                en, "theme.elements.en", "en"))
+                en, "theme.elements.en", "en", game))
 
     # ---- 3. 卡牌命名：由主题推想卡牌名称 ----
     if key == ("elements", "label") and PRINCIPLES:
@@ -289,17 +310,17 @@ def build_for_unit(unit: dict, labels: dict) -> list[dict]:
         kind_zh, _ = describe_kind(unit, labels)
         if zh_ok and len(zh) <= 30:
             out.append(make(
-                "为《密教模拟器》设计一张新卡牌的名称。",
+                f"为《{GAME_ZH[game]}》设计一张新卡牌的名称。",
                 f"语言：中文{kind_zh}{theme_zh}",
-                zh, "name.elements.zh", "zh"))
+                zh, "name.elements.zh", "zh", game))
 
     # ---- 4. 文本续写 ----
     if zh_ok and cjk_len(zh) >= MIN_CONTINUE_CJK:
         prefix, suffix = split_for_continuation(zh)
         if prefix and suffix and cjk_len(suffix) >= MIN_ZH_CJK:
             out.append(make(
-                "下面是一段《密教模拟器》文本的开头，请以原文的风格与语气把它续写完整。",
-                prefix, suffix, "continue.zh", "zh"))
+                f"下面是一段《{GAME_ZH[game]}》文本的开头，请以原文的风格与语气把它续写完整。",
+                prefix, suffix, "continue.zh", "zh", game))
 
     # ---- 5. 中英互译 ----
     # 坑：中文侧常带 <b> 标注重点，英文原文大多没有对应标记。若一律要求「保留标记」，
@@ -312,11 +333,11 @@ def build_for_unit(unit: dict, labels: dict) -> list[dict]:
         if cjk_len(src_zh) >= MIN_ZH_CJK and len(src_en) >= MIN_EN_CHARS:
             tail = "保留 <b>、<i> 等富文本标记与换行结构。" if keep_tags else ""
             out.append(make(
-                f"把下面的《密教模拟器》中文文本翻译成英文。{tail}",
-                src_zh, src_en, "trans.zh2en", "en"))
+                f"把下面的《{GAME_ZH[game]}》中文文本翻译成英文。{tail}",
+                src_zh, src_en, "trans.zh2en", "en", game))
             out.append(make(
-                f"把下面的《密教模拟器》英文文本翻译成中文。{tail}",
-                src_en, src_zh, "trans.en2zh", "zh"))
+                f"把下面的《{GAME_ZH[game]}》英文文本翻译成中文。{tail}",
+                src_en, src_zh, "trans.en2zh", "zh", game))
     return out
 
 

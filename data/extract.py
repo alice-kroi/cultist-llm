@@ -1,12 +1,20 @@
-"""从《密教模拟器》游戏目录抽取全部人类可读文本，产出中英对照语料。
+"""从《密教模拟器》/《司辰之书》游戏目录抽取全部人类可读文本，产出中英对照语料。
+
+支持两款 Weather Factory 游戏，内容目录结构相同（core/ 英文 + loc_zh-hans/ 简体中文），
+只是字段命名略有差异：密教模拟器用 description，司辰之书用 desc（中文侧是纯本地化
+覆盖文件，只有 id/label/desc，机制数据要从英文侧取）。
 
 输出（默认写到 data/corpus/）：
-  text_units.jsonl    每条「实体 + 字段」一条记录，含 zh / en 两列
+  text_units.jsonl    每条「实体 + 字段」一条记录，含 zh / en 两列与 game 标记
   aspect_labels.json  理念(aspect) id → 中英名称，用于构造提示词里的"类别"
   stats.json          规模统计
 
 用法：
+    # 只抽《密教模拟器》（行为与旧版一致）
     python extract.py --game-content "<Steam 库>\\steamapps\\common\\Cultist Simulator\\cultistsimulator_Data\\StreamingAssets\\content"
+
+    # 同时抽《司辰之书》，合并进同一份语料
+    python extract.py --game-content ... --bh-content "...\\Book of Hours\\bh_Data\\StreamingAssets\\bhcontent"
 """
 
 from __future__ import annotations
@@ -26,9 +34,14 @@ DEFAULT_CONTENT = (
     r"<Steam 库>\steamapps\common\Cultist Simulator"
     r"\cultistsimulator_Data\StreamingAssets\content"
 )
+DEFAULT_BH_CONTENT = (
+    r"<Steam 库>\steamapps\common\Book of Hours"
+    r"\bh_Data\StreamingAssets\bhcontent"
+)
 
-# 每种实体里承载自然语言的字段（按游戏内部命名，大小写与空白会被归一化后匹配）
-TEXT_FIELDS: dict[str, list[str]] = {
+# 每种实体里承载自然语言的字段（按游戏内部命名，大小写与空白会被归一化后匹配）。
+# 密教模拟器(CS)与司辰之书(BH)共用同一套实体类型，文本字段略有差异。
+TEXT_FIELDS_CS: dict[str, list[str]] = {
     "elements": ["label", "description"],
     "recipes": ["label", "startdescription", "description"],
     "endings": ["label", "description", "flavour"],
@@ -42,6 +55,22 @@ TEXT_FIELDS: dict[str, list[str]] = {
         "unlockmessage",
     ],
 }
+
+# 司辰之书：文本字段叫 desc（密教模拟器叫 description）；中文侧是本地化覆盖，
+# 机制字段只在英文侧。这里用逻辑字段名，抽取时通过 FIELD_ALIASES 解析实际键名，
+# 输出统一为逻辑名，下游 build_dataset 无需感知两款游戏的字段差异。
+TEXT_FIELDS_BH: dict[str, list[str]] = {
+    "elements": ["label", "description"],
+    "recipes": ["label", "startdescription", "description"],
+    "endings": ["label", "description", "flavour"],
+    "legacies": ["label", "description", "startdescription"],
+    "verbs": ["label", "description"],
+    "decks": ["label", "description"],
+    "achievements": ["label", "descriptionunlocked"],
+}
+
+# 逻辑字段名 → 司辰之书里的实际键名（大小写不敏感，get_field 会归一化匹配）
+FIELD_ALIASES: dict[str, str] = {"description": "desc"}
 
 # 开发者内容、调试实体、更新日志等，不属于玩家可读叙事文本
 SKIP_STEMS = {
@@ -141,25 +170,23 @@ def index_entities(root: str) -> tuple[dict, collections.Counter]:
     return index, conflicts
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="抽取《密教模拟器》文本为中英对照语料")
-    ap.add_argument("--game-content", default=DEFAULT_CONTENT, help="游戏 StreamingAssets/content 目录")
-    ap.add_argument("--loc-subdir", default="loc_zh-hans", help="中文本地化子目录名")
-    ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "corpus"))
-    args = ap.parse_args()
-
-    core_root = os.path.join(args.game_content, "core")
-    loc_root = os.path.join(args.game_content, args.loc_subdir)
+def extract_game(
+    content_root: str,
+    loc_subdir: str,
+    text_fields: dict[str, list[str]],
+    game: str,
+) -> tuple[list[dict], dict[str, dict[str, str]], dict]:
+    """抽取单个游戏的内容根目录，返回 (units, aspect_labels, stats)。"""
+    core_root = os.path.join(content_root, "core")
+    loc_root = os.path.join(content_root, loc_subdir)
     for path in (core_root, loc_root):
         if not os.path.isdir(path):
             raise SystemExit(f"目录不存在：{path}")
 
-    print(f"读取中文内容：{loc_root}")
+    print(f"[{game}] 读取中文内容：{loc_root}")
     zh_index, zh_conf = index_entities(loc_root)
-    print(f"读取英文内容：{core_root}")
+    print(f"[{game}] 读取英文内容：{core_root}")
     en_index, en_conf = index_entities(core_root)
-
-    os.makedirs(args.out, exist_ok=True)
 
     # ---- 抽取文本单元 ----
     units: list[dict] = []
@@ -168,7 +195,7 @@ def main() -> None:
     stat_pairs = collections.Counter()
     aspect_labels: dict[str, dict[str, str]] = {}
 
-    for etype, fields in TEXT_FIELDS.items():
+    for etype, fields in text_fields.items():
         for eid, (zh_ent, zh_src) in zh_index.get(etype, {}).items():
             if SKIP_ID_RE.match(eid):
                 continue
@@ -178,33 +205,42 @@ def main() -> None:
             zh_label = as_text(get_field(zh_ent, "label"))
             en_label = as_text(get_field(en_ent, "label")) if en_ent else ""
 
-            # 理念(理念/属性) id → 名称；elements 中 isAspect 为真者
-            if etype == "elements" and eid and zh_label:
-                flag = get_field(zh_ent, "isAspect")
-                if flag is True:
+            # 理念(理念/属性) id → 名称；elements 中 isAspect 为真者。
+            # 中文侧是纯本地化覆盖（无机制字段），所以 isAspect 得看英文侧。
+            if etype == "elements" and eid:
+                flag = get_field(en_ent or zh_ent, "isAspect")
+                if flag is True and zh_label:
                     aspect_labels[eid] = {"zh": zh_label, "en": en_label or eid}
 
             ctx: dict = {}
-            aspects = get_field(zh_ent, "aspects")
+            # 机制字段（aspects / actionid）以英文侧为准，中文侧缺失时回退中文侧
+            src = en_ent if en_ent is not None else zh_ent
+            aspects = get_field(src, "aspects")
             if isinstance(aspects, dict):
                 ctx["aspects"] = [k for k, v in aspects.items() if v]
-            actionid = get_field(zh_ent, "actionid")
+            actionid = get_field(src, "actionid")
             if isinstance(actionid, str) and actionid:
                 ctx["actionid"] = actionid
-            if en_ent is not None:
-                ctx["actionid_en"] = get_field(en_ent, "actionid") or actionid
+            ctx["actionid_en"] = actionid or ""
 
             for field in fields:
-                zh_text = as_text(get_field(zh_ent, field))
+                # 逻辑字段名可能对应不同实际键名（司辰之书 desc ↔ 密教 description），
+                # 先按逻辑名取，取不到再按别名取；输出统一用逻辑名
+                actual = field
+                zh_text = as_text(get_field(zh_ent, actual))
+                if not zh_text and field in FIELD_ALIASES:
+                    actual = FIELD_ALIASES[field]
+                    zh_text = as_text(get_field(zh_ent, actual))
                 if not zh_text:
                     continue
-                en_text = as_text(get_field(en_ent, field)) if en_ent else ""
+                en_text = as_text(get_field(en_ent, actual)) if en_ent else ""
                 units.append(
                     {
                         "etype": etype,
                         "id": eid,
                         "field": norm_key(field),
                         "source": zh_src.replace("\\", "/"),
+                        "game": game,
                         "zh": zh_text,
                         "en": en_text,
                         "zh_label": zh_label,
@@ -233,14 +269,6 @@ def main() -> None:
         else:
             stat_pairs["zh_only"] += 1
 
-    units_path = os.path.join(args.out, "text_units.jsonl")
-    with open(units_path, "w", encoding="utf-8") as fh:
-        for u in deduped:
-            fh.write(json.dumps(u, ensure_ascii=False) + "\n")
-
-    with open(os.path.join(args.out, "aspect_labels.json"), "w", encoding="utf-8") as fh:
-        json.dump(aspect_labels, fh, ensure_ascii=False, indent=2)
-
     zh_chars = sum(text_len(u["zh"]) for u in deduped)
     en_chars = sum(len(u["en"]) for u in deduped if u["en"])
     stats = {
@@ -256,16 +284,59 @@ def main() -> None:
         "id_conflicts_zh": dict(zh_conf),
         "id_conflicts_en": dict(en_conf),
     }
+
+    print(f"[{game}] 文本单元        : {len(deduped)}  (去重丢弃 {dup})")
+    print(f"[{game}] 中文字符数      : {zh_chars:,}")
+    print(f"[{game}] 英文字符数      : {en_chars:,}")
+    print(f"[{game}] 中英成对        : {stat_pairs['both']}   仅中文: {stat_pairs['zh_only']}")
+    print(f"[{game}] 理念索引        : {len(aspect_labels)}")
+    return deduped, aspect_labels, stats
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="抽取《密教模拟器》/《司辰之书》文本为中英对照语料")
+    ap.add_argument("--game-content", default=DEFAULT_CONTENT, help="密教模拟器 StreamingAssets/content 目录")
+    ap.add_argument("--bh-content", default="", help="司辰之书 StreamingAssets/bhcontent 目录；给则一并抽取")
+    ap.add_argument("--loc-subdir", default="loc_zh-hans", help="中文本地化子目录名")
+    ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "corpus"))
+    args = ap.parse_args()
+
+    games: list[tuple[str, str, dict[str, list[str]]]] = [
+        (args.game_content, "cs", TEXT_FIELDS_CS),
+    ]
+    if args.bh_content:
+        games.append((args.bh_content, "bh", TEXT_FIELDS_BH))
+
+    all_units: list[dict] = []
+    aspect_labels: dict[str, dict[str, str]] = {}
+    per_game: dict[str, dict] = {}
+    for content_root, game, text_fields in games:
+        units, labels, stats = extract_game(content_root, args.loc_subdir, text_fields, game)
+        all_units.extend(units)
+        aspect_labels.update(labels)
+        per_game[game] = stats
+
+    os.makedirs(args.out, exist_ok=True)
+
+    units_path = os.path.join(args.out, "text_units.jsonl")
+    with open(units_path, "w", encoding="utf-8") as fh:
+        for u in all_units:
+            fh.write(json.dumps(u, ensure_ascii=False) + "\n")
+
+    with open(os.path.join(args.out, "aspect_labels.json"), "w", encoding="utf-8") as fh:
+        json.dump(aspect_labels, fh, ensure_ascii=False, indent=2)
+
+    stats = {
+        "games": {g: per_game[g] for g in per_game},
+        "text_units": len(all_units),
+    }
     with open(os.path.join(args.out, "stats.json"), "w", encoding="utf-8") as fh:
         json.dump(stats, fh, ensure_ascii=False, indent=2)
 
     print("\n===== 抽取完成 =====")
-    print(f"文本单元        : {len(deduped)}  (去重丢弃 {dup})")
-    print(f"中文字符数      : {zh_chars:,}")
-    print(f"英文字符数      : {en_chars:,}")
-    print(f"中英成对        : {stat_pairs['both']}   仅中文: {stat_pairs['zh_only']}")
-    print(f"理念索引        : {len(aspect_labels)}")
-    print(f"按实体类型      : {dict(stat_etype.most_common())}")
+    print(f"游戏            : {', '.join(per_game)}")
+    print(f"文本单元合计    : {len(all_units):,}")
+    print(f"理念索引合计    : {len(aspect_labels)}")
     print(f"\n输出目录        : {args.out}")
 
 

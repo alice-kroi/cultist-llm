@@ -34,43 +34,52 @@ cultist-llm/
 
 ## 3. 数据集来源
 
-全部语料来自本地已安装的《密教模拟器》。游戏把内容以 JSON 存在 `StreamingAssets/content/` 下，英文原文在 `core/`，简体中文翻译在 `loc_zh-hans/`，两者按实体 `id` 一一对应。
+全部语料来自本地已安装的两款游戏：《密教模拟器》(Cultist Simulator) 与《司辰之书》(Book of Hours)，两款都是 Weather Factory 出品、同一世界观。游戏把内容以 JSON 存在 `StreamingAssets/` 下，英文原文在 `core/`，简体中文翻译在 `loc_zh-hans/`，两者按实体 `id` 一一对应。
+
+- 密教模拟器：`...\Cultist Simulator\cultistsimulator_Data\StreamingAssets\content`
+- 司辰之书：`...\Book of Hours\bh_Data\StreamingAssets\bhcontent`
+
+数据准备脚本会检测两个目录，检测到哪款就抽哪款，默认两款都抽：
+
+```powershell
+.\scripts\prepare_data.ps1 -GameContent "...\content" -BhContent "...\bhcontent"
+```
 
 抽取结果（实测）：
 
-| 指标 | 数值 |
-| --- | --- |
-| 文本单元 | 8,691 条（去重丢弃 2,438 条重复文本） |
-| 中文字符 | 237,422 |
-| 英文字符 | 831,834 |
-| 中英成对 | 8,688 条（99.97%） |
-| 理念(aspect) 索引 | 433 个，其中 307 个有中文名 |
+| 指标 | 密教模拟器 | 司辰之书 | 合计 |
+| --- | --- | --- | --- |
+| 文本单元 | 8,691 | 11,419 | 20,110 |
+| 中文字符 | 237,422 | 347,329 | 584,751 |
+| 英文字符 | 831,834 | 1,093,934 | 1,925,768 |
+| 中英成对 | 8,688 | 9,348 | 18,036 |
+| 理念(aspect) 索引 | 433 | 904 | 1,320 |
 
 覆盖的文本字段如下，其余字段像 `aspects`、`effects`、`slots`、`alt` 属于机制数据，不参与训练：
 
 | 实体 | 文本字段 |
 | --- | --- |
-| elements | label, description |
+| elements | label, description（司辰之书为 desc） |
 | recipes | label, startdescription, description |
 | endings | label, description, flavour |
 | legacies | label, description, startdescription |
 | verbs / decks | label, description |
 | achievements | label, descriptionunlocked / descriptionlocked / unlockmessage |
 
-文本里的 `<b>` / `<i>` / `<br>` 富文本标记和 `#PREVIOUSCHARACTERNAME#` 占位符按原样保留，它们就是游戏实际的显示格式。
+司辰之书的中文文件是纯本地化覆盖（只有 id/label/desc），机制字段从英文侧补齐；部分英文文件是 UTF-16 编码，脚本已自动识别。文本里的 `<b>` / `<i>` / `<br>` 富文本标记和 `#PREVIOUSCHARACTERNAME#` 占位符按原样保留，它们就是游戏实际的显示格式。
 
-每条语料中英文各成一条样本，最终 26,875 条训练样本 + 779 条验证样本，验证集按实体 id 稳定划分，同一实体的样本不会跨集：
+每条语料中英文各成一条样本，最终 59,018 条训练样本 + 1,858 条验证样本，验证集按实体 id 稳定划分，同一实体的样本不会跨集：
 
 | 任务 | 样本数 | 说明 |
 | --- | --- | --- |
-| `trans.zh2en` / `trans.en2zh` | 7233 / 7233 | 中英互译 |
-| `gen.recipes.startdescription.*` | 1946 / 1964 | 行动开场叙事（给定行动类型 + 事件名） |
-| `continue.zh` | 1953 | 给定开头按原文风格续写 |
-| `gen.elements.description.*` | 1584 / 1596 | 卡牌描述（给定卡牌名 + 类别 + 主题） |
-| `name.elements.zh` | 991 | 由主题设计新卡牌名称 |
-| `gen.recipes.description.*` | 933 / 937 | 行动结算叙事 |
-| `theme.elements.*` | 450 / 449 | 以准则（灯/铸/刃/冬/心/杯/蛾/启/秘史）为主题创作 |
-| 其余（结局/成就/传承/牌堆/行动说明） | 442 | 长尾任务 |
+| `trans.zh2en` / `trans.en2zh` | 15168 / 15168 | 中英互译 |
+| `continue.zh` | 5204 | 给定开头按原文风格续写 |
+| `gen.recipes.startdescription.*` | 4847 / 4884 | 行动开场叙事（给定行动类型 + 事件名） |
+| `gen.elements.description.*` | 3909 / 2974 | 卡牌描述（给定卡牌名 + 类别 + 主题） |
+| `name.elements.zh` | 2410 | 由主题设计新卡牌名称 |
+| `gen.recipes.description.*` | 2008 / 2018 | 行动结算叙事 |
+| `theme.elements.*` | 658 / 657 | 以准则（灯/铸/刃/冬/心/杯/蛾/启/秘史）为主题创作 |
+| 其余（结局/成就/传承/牌堆/行动说明） | 约 1,000 | 长尾任务 |
 
 语料不入库：`data/corpus/` 与 `data/dataset/` 已加入 `.gitignore`，请勿公开分发。
 
@@ -94,8 +103,8 @@ conda run -n llama-factory pip install --no-deps "bitsandbytes>=0.45.0"
 git clone https://github.com/alice-kroi/cultist-llm.git
 cd cultist-llm
 
-# 数据源是你本地已安装的《密教模拟器》，用 -GameContent 指定游戏目录，大约 30 秒
-.\scripts\prepare_data.ps1 -GameContent "X:\Games\Cultist Simulator\cultistsimulator_Data\StreamingAssets\content"
+# 数据源是本地已安装的《密教模拟器》与《司辰之书》，检测到哪款就抽哪款，见「3. 数据集来源」
+.\scripts\prepare_data.ps1 -GameContent "X:\Games\Cultist Simulator\cultistsimulator_Data\StreamingAssets\content" -BhContent "X:\Games\Book of Hours\bh_Data\StreamingAssets\bhcontent"
 
 # 下载基座模型
 conda run -n llama-factory python scripts\download_models.py --sizes 4b
@@ -155,9 +164,9 @@ conda run -n llama-factory python infer/generate.py --model ... --prompts my_pro
 | [qwen3_8b_qlora.yaml](configs/qwen3_8b_qlora.yaml) | QLoRA 4bit | 896 | 1×16 | 3 | ~8–10 GB |
 | [qwen3_14b_qlora.yaml](configs/qwen3_14b_qlora.yaml) | QLoRA 4bit | 896 | 1×16 | 3 | ~12–14 GB |
 
-统一设置是 `lora_rank=16` / `alpha=32` / `lora_target=all`，等效 batch 16，`learning_rate=1e-4`，cosine 调度，`bf16` 加梯度检查点，每 epoch 约 1680 步。模板用 `qwen3_nothink`——本任务是风格化文本生成，不需要 Qwen3 的思考链。
+统一设置是 `lora_rank=16` / `alpha=32` / `lora_target=all`，等效 batch 16，`learning_rate=1e-4`，cosine 调度，`bf16` 加梯度检查点，每 epoch 约 3689 步（59,018 条训练样本 ÷ 等效 batch 16）。模板用 `qwen3_nothink`——本任务是风格化文本生成，不需要 Qwen3 的思考链。
 
-`cutoff_len: 896` 是按真实数据定的：26,875 条训练样本的 token 长度最长 768、p99 310、均值 140，896 已覆盖 100%。4B 另开了 `pure_bf16: true`，让 LoRA 分支保持半精度（LLaMA-Factory 默认会降到 float32，显存翻倍）。
+`cutoff_len: 896` 是按真实数据定的：59,018 条训练样本的 token 长度最长 768、p99 314、均值 136，896 已覆盖 100%。4B 另开了 `pure_bf16: true`，让 LoRA 分支保持半精度（LLaMA-Factory 默认会降到 float32，显存翻倍）。
 
 `-Merge` 默认在 CPU 上做，不吃显存；实测 0.6B 合并约 30 秒，产物是单个 bf16 的 `model.safetensors`，可以脱离 LoRA 适配器直接加载。
 

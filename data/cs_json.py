@@ -89,14 +89,27 @@ def repair(text: str) -> str:
     return _TRAILING_COMMA_RE.sub(r"\1", repaired)
 
 
+def _decode(raw: bytes) -> str:
+    """按文件头探测编码：UTF-8（可带 BOM）或 UTF-16。
+
+    《司辰之书》的英文内容文件混用 UTF-8 与 UTF-16（后者带 BOM），
+    所以不能写死成一种编码。UTF-16 用 codec 自动消费 BOM，
+    避免解码结果里残留 \\ufeff 字符导致 json.loads 报 "Unexpected UTF-8 BOM"。
+    """
+    if raw.startswith(b"\xff\xfe") or raw.startswith(b"\xfe\xff"):
+        return raw.decode("utf-16")
+    return raw.decode("utf-8-sig")
+
+
 def load_json(path: str) -> Any:
     """读取单个内容文件；严格解析失败时回退到修复后解析。"""
-    with open(path, encoding="utf-8-sig") as fh:
+    with open(path, "rb") as fh:
         raw = fh.read()
+    text = _decode(raw)
     try:
-        return json.loads(raw)
+        return json.loads(text)
     except json.JSONDecodeError:
-        return json.loads(repair(raw))
+        return json.loads(repair(text))
 
 
 def iter_json_files(root: str):
