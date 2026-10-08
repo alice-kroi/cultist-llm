@@ -13,7 +13,7 @@ param(
     [string]$GameContent = "<Steam 库>\steamapps\common\Cultist Simulator\cultistsimulator_Data\StreamingAssets\content",
     [string]$BhContent = "<Steam 库>\steamapps\common\Book of Hours\bh_Data\StreamingAssets\bhcontent",
     [string]$EnvName = "llama-factory",
-    [double]$EvalRatio = 0.03
+    [double]$EvalRatio = 0.1
 )
 
 $ErrorActionPreference = "Stop"

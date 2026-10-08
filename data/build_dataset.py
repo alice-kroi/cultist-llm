@@ -373,7 +373,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="构造《密教模拟器》多任务指令数据集")
     ap.add_argument("--corpus", default=os.path.join(HERE, "corpus"), help="extract.py 的输出目录")
     ap.add_argument("--out", default=os.path.join(HERE, "dataset"), help="数据集输出目录")
-    ap.add_argument("--eval-ratio", type=float, default=0.03, help="验证集比例（按实体 id 划分）")
+    ap.add_argument("--eval-ratio", type=float, default=0.1, help="验证集比例（按实体 id 划分）")
     ap.add_argument("--no-eval", action="store_true", help="不划分验证集，全部用于训练")
     ap.add_argument("--max-chars", type=int, default=DEFAULT_MAX_CHARS, help="单条样本输入+输出的最大字符数")
     args = ap.parse_args()

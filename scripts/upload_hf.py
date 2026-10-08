@@ -69,6 +69,8 @@ SIZES = {
         "eval_loss": "2.406",
         "merged_size": "1.13 GB",
         "lora_size": "38.5 MB",
+        "train_samples": "26,875",
+        "eval_samples": "779",
     },
     "1.7b": {
         "base": "Qwen/Qwen3-1.7B",
@@ -82,6 +84,8 @@ SIZES = {
         "eval_loss": "—",
         "merged_size": "—",
         "lora_size": "—",
+        "train_samples": "—",
+        "eval_samples": "—",
     },
     "4b": {
         "base": "Qwen/Qwen3-4B",
@@ -89,12 +93,14 @@ SIZES = {
         "merged_dir": "outputs/qwen3-4b-lora-merged",
         "params": "4B",
         "epochs": 3,
-        "steps": 5040,
+        "steps": 11067,
         "batch": "1 × 16",
-        "runtime": "6 小时",
-        "eval_loss": "1.949",
+        "runtime": "15 小时 41 分",
+        "eval_loss": "1.633",
         "merged_size": "7.51 GB",
         "lora_size": "126.1 MB",
+        "train_samples": "59,018",
+        "eval_samples": "1,858",
     },
     "8b": {
         "base": "Qwen/Qwen3-8B",
@@ -108,6 +114,8 @@ SIZES = {
         "eval_loss": "—",
         "merged_size": "—",
         "lora_size": "—",
+        "train_samples": "—",
+        "eval_samples": "—",
     },
     "14b": {
         "base": "Qwen/Qwen3-14B",
@@ -121,6 +129,8 @@ SIZES = {
         "eval_loss": "—",
         "merged_size": "—",
         "lora_size": "—",
+        "train_samples": "—",
+        "eval_samples": "—",
     },
 }
 
@@ -317,6 +327,8 @@ def main() -> int:
                     eval_loss=spec["eval_loss"],
                     merged_size=spec["merged_size"],
                     lora_size=spec["lora_size"],
+                    train_samples=spec["train_samples"],
+                    eval_samples=spec["eval_samples"],
                 ).encode("utf-8"),
                 path_in_repo="README.md",
                 repo_id=repo_id,

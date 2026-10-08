@@ -20,7 +20,7 @@ tags:
 
 # cultist-simulator-qwen3-{size}
 
-用《密教模拟器》(Cultist Simulator) 的游戏内文本微调 [{base}](https://huggingface.co/{base}) 得到的 {params} 文本生成模型。目标是让它学会这个游戏那种晦涩、克制、带书卷气又带点不祥暗示的写法，能写卡牌描述、事件叙事、结局文本，也能做中英互译。生成的文字可以直接拿去当同人创作、跑团素材或模组草稿。
+用《密教模拟器》(Cultist Simulator) 与《司辰之书》(Book of Hours) 的游戏内文本微调 [{base}](https://huggingface.co/{base}) 得到的 {params} 文本生成模型。目标是让它学会这两款游戏那种晦涩、克制、带书卷气又带点不祥暗示的写法，能写卡牌描述、事件叙事、结局文本，也能做中英互译。生成的文字可以直接拿去当同人创作、跑团素材或模组草稿。
 
 ## 模型详情
 
@@ -34,7 +34,7 @@ tags:
 | --- | --- |
 | 基座模型 | [{base}](https://huggingface.co/{base}) |
 | 微调方式 | LoRA（`r=16`，`alpha=32`，作用于 q/k/v/o/gate/up/down 全部投影层） |
-| 训练样本 | 26,875 条（验证集 779 条，按实体 id 稳定划分） |
+| 训练样本 | {train_samples} 条（验证集 {eval_samples} 条，按实体 id 稳定划分） |
 | 训练轮数 | {epochs} epoch / {steps} 步 |
 | 等效 batch | {batch}（`per_device × 梯度累积` = 16） |
 | 截断长度 | 896 |
@@ -72,8 +72,8 @@ tok = AutoTokenizer.from_pretrained(repo)
 model = AutoModelForCausalLM.from_pretrained(repo, dtype="bfloat16", device_map="auto")
 
 system = (
-    "你是《密教模拟器》（Cultist Simulator）的文本生成模型。"
-    "你精通该游戏晦涩、克制、带着书卷气与不祥暗示的文风，"
+    "你是《密教模拟器》（Cultist Simulator）与《司辰之书》（Book of Hours）的文本生成模型。"
+    "你精通这两款游戏晦涩、克制、带着书卷气与不祥暗示的文风，"
     "能够按给定的题材、类别和主题创作中文与英文游戏文本，也能在中英文之间准确互译。"
 )
 user = "为《密教模拟器》中的一张卡牌撰写描述文本。\\n\\n语言：中文\\n卡牌名称：无光的陈列室\\n类别：地点\\n主题：冬、灯"
@@ -117,11 +117,11 @@ ollama run cultist-{params}
 - 4B：`The light leaks through <b>cracks</b>. My mind is <b>clearer</b> than it's been <b>in any other time</b>.` ✅ 标记完整保留
 - 0.6B：`Light leaks through a Crack in the Skin. My brain is clearer than ever at any given time.` ❌ 标记全丢
 
-> eval_loss 也印证这个差距：4B 1.949 vs 0.6B 2.406。
+> eval_loss 也印证这个差距：4B 1.633 vs 0.6B 2.406。
 
 ## 数据来源与使用限制
 
-训练语料全部抽取自《密教模拟器》游戏本体，版权归 Weather Factory 所有，中文文本来自游戏的官方简体中文资源。基座模型 {base} 采用 Apache-2.0 协议，本仓库的权重是它的微调衍生品。
+训练语料全部抽取自《密教模拟器》与《司辰之书》两款游戏本体，版权归 Weather Factory 所有，中文文本来自游戏的官方简体中文资源。基座模型 {base} 采用 Apache-2.0 协议，本仓库的权重是它的微调衍生品。
 
 请只把本模型用于个人学习、同人创作这类非商业用途。模型生成的内容有可能重现或近似游戏原文，公开发布生成结果时请遵守游戏原作者的授权条款并注明题材来源。另外它只学了文风和文本结构，并不理解也不会执行游戏机制，生成内容不保证与官方设定一致。
 
