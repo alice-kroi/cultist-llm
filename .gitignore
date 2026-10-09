@@ -26,6 +26,9 @@ logs/*
 !logs/train_4b_backup/
 !logs/train_4b_backup/*
 !logs/train_4b_backup/trainer_log.jsonl
+!logs/train_0.6b_backup/
+!logs/train_0.6b_backup/*
+!logs/train_0.6b_backup/trainer_log.jsonl
 
 # 缓存
 __pycache__/
