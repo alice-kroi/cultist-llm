@@ -187,7 +187,7 @@ conda run -n llama-factory python infer/generate.py --model ... --prompts my_pro
 
 | 尺寸 | 训练步数 | 训练时长 | eval_loss | 合并模型 | LoRA 适配器 |
 | --- | --- | --- | --- | --- | --- |
-| 0.6B | 6720 | 1 小时 22 分 | 2.406 | 1.13 GB | 38.5 MB |
+| 0.6B | 13672 | 7 小时 54 分 | 2.070 | 1.13 GB | 38.5 MB |
 | 4B | 11067 | 15 小时 41 分 | 1.633 | 7.51 GB | 126.1 MB |
 
 两个尺寸的合并模型都用 CPU 加载跑过一遍生成验证，日志在 [`logs/verify_0.6b_merged.log`](logs/verify_0.6b_merged.log) 和 [`logs/verify_4b_merged.log`](logs/verify_4b_merged.log)。效果上 0.6B 格式遵循度一般，4B 的语感和格式遵循度都明显更好，所以推荐用 4B。

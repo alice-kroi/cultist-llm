@@ -117,7 +117,7 @@ ollama run cultist-{params}
 - 4B：`The light leaks through <b>cracks</b>. My mind is <b>clearer</b> than it's been <b>in any other time</b>.` ✅ 标记完整保留
 - 0.6B：`Light leaks through a Crack in the Skin. My brain is clearer than ever at any given time.` ❌ 标记全丢
 
-> eval_loss 也印证这个差距：4B 1.633 vs 0.6B 2.406。
+> eval_loss 也印证这个差距：4B 1.633 vs 0.6B 2.070。
 
 ## 数据来源与使用限制
 
